@@ -60,7 +60,6 @@
             padding: 0 20px;
             display: flex;
             justify-content: center;
-            gap: 15px;
         }
 
         .btn {
@@ -99,4 +98,310 @@
         .card {
             background: var(--card-bg);
             border-radius: 16px;
-            overflow: hidden
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            border-color: var(--accent-purple);
+            box-shadow: 0 10px 25px rgba(123, 44, 191, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .card-img-wrapper {
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .card:hover .card-img-wrapper img {
+            transform: scale(1.05);
+        }
+
+        .card-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 2;
+        }
+
+        .icon-btn {
+            background: rgba(11, 7, 18, 0.75);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .icon-btn.delete:hover {
+            background: var(--danger-color);
+            transform: scale(1.1);
+        }
+
+        /* Modal / Lightbox */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 2, 9, 0.92);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            max-width: 90vw;
+            max-height: 85vh;
+            border-radius: 12px;
+            box-shadow: 0 0 30px var(--accent-glow);
+            border: 1px solid var(--accent-purple);
+            object-fit: contain;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--accent-light);
+        }
+
+        /* Modal dodawania zdjęcia */
+        .add-modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--accent-purple);
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .add-modal-content h2 {
+            margin-bottom: 20px;
+            color: var(--accent-light);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+        }
+
+        .submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>FIGA 🐾</h1>
+        <p>Katalog zdjęć przygotowany z miłością</p>
+    </header>
+
+    <div class="actions-bar">
+        <button class="btn" onclick="openAddModal()">➕ Dodaj nowe zdjęcie</button>
+    </div>
+
+    <main class="gallery-grid" id="gallery"></main>
+
+    <!-- Modal podglądu zdjęcia -->
+    <div class="modal" id="lightbox-modal" onclick="closeLightbox(event)">
+        <span class="close-modal" onclick="closeLightbox(event)">&times;</span>
+        <img class="modal-content" id="lightbox-img" src="" alt="Powiększenie">
+    </div>
+
+    <!-- Modal dodawania zdjęcia -->
+    <div class="modal" id="add-modal" onclick="closeAddModal(event)">
+        <div class="add-modal-content" onclick="event.stopPropagation()">
+            <h2>Dodaj zdjęcie Figi</h2>
+            <form id="add-photo-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label>Wybierz plik z dysku:</label>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Lub wklej URL zdjęcia:</label>
+                    <input type="url" id="url-input" placeholder="https://...">
+                </div>
+                <button type="submit" class="btn submit-btn">Dodaj do albumu</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Przykladowe grafiki ze zdjeciami kota z generatorem SVG (dla 100% niezawodnosci)
+        function createSvgCat(bg, text) {
+            return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="600" height="600" fill="${bg}"/><circle cx="300" cy="280" r="120" fill="%232a1b40"/><path d="M 200 180 L 230 250 L 170 250 Z" fill="%239d4edd"/><path d="M 400 180 L 430 250 L 370 250 Z" fill="%239d4edd"/><circle cx="260" cy="270" r="18" fill="%23c77dff"/><circle cx="340" cy="270" r="18" fill="%23c77dff"/><polygon points="300,300 290,315 310,315" fill="%23ff4d6d"/><text x="300" y="470" font-family="sans-serif" font-size="28" font-weight="bold" fill="%23f3e8ff" text-anchor="middle">Figa 🐾 (${text})</text></svg>`;
+        }
+
+        const initialPhotos = [
+            { id: 1, src: createSvgCat("%231a0e2e", "Zdj%C4%99cie%201") },
+            { id: 2, src: createSvgCat("%23210d38", "Zdj%C4%99cie%202") },
+            { id: 3, src: createSvgCat("%23170a29", "Zdj%C4%99cie%203") },
+            { id: 4, src: createSvgCat("%23250a3d", "Zdj%C4%99cie%204") },
+            { id: 5, src: createSvgCat("%231c0e33", "Zdj%C4%99cie%205") },
+            { id: 6, src: createSvgCat("%23200b30", "Zdj%C4%99cie%206") },
+            { id: 7, src: "IMG_1853_6937dc.jpeg" },
+            { id: 8, src: "IMG_1693_6937dc.jpg" },
+            { id: 9, src: "IMG_1671_6937dc.jpg" },
+            { id: 10, src: "IMG_1648_6937dc.jpg" }
+        ];
+
+        let photos = JSON.parse(localStorage.getItem('figa_photos_v2')) || initialPhotos;
+
+        function savePhotos() {
+            try {
+                localStorage.setItem('figa_photos_v2', JSON.stringify(photos));
+            } catch (e) {
+                console.warn('Nie udało się zapisać danych w pamięci przeglądarki.', e);
+            }
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            if (photos.length === 0) {
+                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Galeria jest pusta. Dodaj zdjęcie przyciskiem powyżej! 🐾</p>';
+                return;
+            }
+
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-img-wrapper" onclick="openLightbox('${photo.src}')">
+                        <img src="${photo.src}" alt="Zdjęcie Figi" onerror="this.onerror=null; this.src='${createSvgCat("%231a0e2e", "Brak%20pliku")}'" loading="lazy">
+                    </div>
+                    <div class="card-actions">
+                        <button class="icon-btn delete" onclick="deletePhoto(event, ${photo.id})" title="Usuń zdjęcie">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function deletePhoto(event, id) {
+            event.stopPropagation();
+            if (confirm('Czy na pewno chcesz usunąć to zdjęcie z galerii?')) {
+                photos = photos.filter(p => p.id !== id);
+                savePhotos();
+                renderGallery();
+            }
+        }
+
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox-modal').classList.add('active');
+        }
+
+        function closeLightbox(event) {
+            if (event.target.id === 'lightbox-modal' || event.target.className === 'close-modal') {
+                document.getElementById('lightbox-modal').classList.remove('active');
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('add-modal').classList.add('active');
+        }
+
+        function closeAddModal(event) {
+            if (event.target.id === 'add-modal' || event.type === 'submit') {
+                document.getElementById('add-modal').classList.remove('active');
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file-input');
+            const urlInput = document.getElementById('url-input');
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    addNewPhoto(evt.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else if (urlInput.value.trim() !== '') {
+                addNewPhoto(urlInput.value.trim());
+            }
+
+            fileInput.value = '';
+            urlInput.value = '';
+            closeAddModal(e);
+        }
+
+        function addNewPhoto(src) {
+            const newPhoto = {
+                id: Date.now(),
+                src: src
+            };
+            photos.unshift(newPhoto);
+            savePhotos();
+            renderGallery();
+        }
+
+        renderGallery();
+    </script>
+</body>
+</html>
