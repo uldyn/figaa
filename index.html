@@ -60,20 +60,18 @@
             padding: 0 20px;
             display: flex;
             justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
         }
 
         .btn {
             background: var(--card-bg);
             color: var(--accent-light);
             border: 1px solid var(--accent-purple);
-            padding: 12px 24px;
+            padding: 12px 28px;
             border-radius: 30px;
             cursor: pointer;
             font-family: inherit;
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 1rem;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             display: flex;
@@ -242,4 +240,113 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--accent-purple
+            border-color: var(--accent-purple);
+        }
+
+        .submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>FIGA 🐾</h1>
+        <p>Katalog zdjęć przygotowany z miłością</p>
+    </header>
+
+    <div class="actions-bar">
+        <button class="btn" onclick="openAddModal()">➕ Dodaj link do zdjęcia</button>
+    </div>
+
+    <main class="gallery-grid" id="gallery"></main>
+
+    <!-- Modal podglądu -->
+    <div class="modal" id="lightbox-modal" onclick="closeLightbox(event)">
+        <span class="close-modal" onclick="closeLightbox(event)">&times;</span>
+        <img class="modal-content" id="lightbox-img" src="" alt="Powiększenie">
+    </div>
+
+    <!-- Modal dodawania -->
+    <div class="modal" id="add-modal" onclick="closeAddModal(event)">
+        <div class="add-modal-content" onclick="event.stopPropagation()">
+            <h2>Dodaj zdjęcie Figi</h2>
+            <form id="add-photo-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label>Wklej bezpośredni link URL do zdjęcia:</label>
+                    <input type="url" id="url-input" placeholder="https://..." required>
+                </div>
+                <button type="submit" class="btn submit-btn">Dodaj do albumu</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Początkowa lista (możesz tu wpisywać linki do zdjęć Figi)
+        let photos = JSON.parse(localStorage.getItem('figa_vercel_gallery')) || [
+            { id: 1, src: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600" }
+        ];
+
+        function savePhotos() {
+            localStorage.setItem('figa_vercel_gallery', JSON.stringify(photos));
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            if (photos.length === 0) {
+                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Brak zdjęć w galerii. 🐾</p>';
+                return;
+            }
+
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-img-wrapper" onclick="openLightbox('${photo.src}')">
+                        <img src="${photo.src}" alt="Zdjęcie Figi" loading="lazy">
+                    </div>
+                    <div class="card-actions">
+                        <button class="icon-btn delete" onclick="deletePhoto(event, ${photo.id})" title="Usuń zdjęcie">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function deletePhoto(event, id) {
+            event.stopPropagation();
+            if (confirm('Usunąć to zdjęcie?')) {
+                photos = photos.filter(p => p.id !== id);
+                savePhotos();
+                renderGallery();
+            }
+        }
+
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox-modal').classList.add('active');
+        }
+
+        function closeLightbox(event) {
+            if (event.target.id === 'lightbox-modal' || event.target.className === 'close-modal') {
+                document.getElementById('lightbox-modal').classList.remove('active');
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('add-modal').classList.add('active');
+        }
+
+        function closeAddModal(event) {
+            if (event.target.id === 'add-modal' || event.type === 'submit') {
+                document.getElementById('add-modal').classList.remove('active');
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
