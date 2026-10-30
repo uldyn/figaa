@@ -6,9 +6,8 @@
     <title>Katalog Figi 🐾</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK do synchronizacji w czasie rzeczywistym -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <!-- Supabase SDK do obsługi chmury dla wszystkich -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         :root {
@@ -131,4 +130,42 @@
         }
 
         .card:hover .card-img-wrapper img {
-            transform: scale
+            transform: scale(1.05);
+        }
+
+        .card-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 2;
+        }
+
+        .icon-btn {
+            background: rgba(11, 7, 18, 0.7);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .icon-btn.delete:hover {
+            background: var(--danger-color);
+            transform: scale(1.1);
+        }
+
+        /* Modal / Lightbox */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
