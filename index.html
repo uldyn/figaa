@@ -169,3 +169,251 @@
             left: 0;
             width: 100%;
             height: 100%;
+            background: rgba(5, 2, 9, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            max-width: 90vw;
+            max-height: 85vh;
+            border-radius: 12px;
+            box-shadow: 0 0 30px var(--accent-glow);
+            border: 1px solid var(--accent-purple);
+            object-fit: contain;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--accent-light);
+        }
+
+        /* Modal dodawania zdjęcia */
+        .add-modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--accent-purple);
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .add-modal-content h2 {
+            margin-bottom: 20px;
+            color: var(--accent-light);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+        }
+
+        .submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>FIGA 🐾</h1>
+        <p>Katalog zdjęć przygotowany z miłością</p>
+    </header>
+
+    <div class="actions-bar">
+        <button class="btn" onclick="openAddModal()">➕ Dodaj link do zdjęcia</button>
+    </div>
+
+    <main class="gallery-grid" id="gallery">
+        <p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Ładowanie galerii z chmury... 🐾</p>
+    </main>
+
+    <!-- Modal podglądu -->
+    <div class="modal" id="lightbox-modal" onclick="closeLightbox(event)">
+        <span class="close-modal" onclick="closeLightbox(event)">&times;</span>
+        <img class="modal-content" id="lightbox-img" src="" alt="Powiększenie">
+    </div>
+
+    <!-- Modal dodawania -->
+    <div class="modal" id="add-modal" onclick="closeAddModal(event)">
+        <div class="add-modal-content" onclick="event.stopPropagation()">
+            <h2>Dodaj zdjęcie Figi</h2>
+            <form id="add-photo-form" onsubmit="handleFormSubmit(event)">
+                <div class="form-group">
+                    <label>Wklej bezpośredni URL do zdjęcia:</label>
+                    <input type="url" id="url-input" placeholder="https://..." required>
+                </div>
+                <button type="submit" class="btn submit-btn" id="submit-btn">Dodaj do albumu dla wszystkich</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURACJA SUPABASE (Zmień na swoje darmowe klucze z supabase.com) ---
+        const SUPABASE_URL = 'https://twoj-projekt.supabase.co';
+        const SUPABASE_ANON_KEY = 'twoj-anon-key';
+        // --------------------------------------------------------------------------
+
+        let supabaseClient = null;
+        if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'https://twoj-projekt.supabase.co') {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        async function fetchPhotos() {
+            if (!supabaseClient) {
+                document.getElementById('gallery').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--accent-light); padding: 40px 0;"><b>Konfiguracja wymagana:</b> Wklej swoje darmowe klucze Supabase w kodzie JavaScript pliku index.html, aby baza danych działała publicznie!</p>';
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('figa_galeria')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Błąd pobierania:', error);
+                return;
+            }
+
+            renderGallery(data || []);
+        }
+
+        function renderGallery(photos) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            if (photos.length === 0) {
+                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Brak zdjęć w chmurze. Dodaj pierwsze! 🐾</p>';
+                return;
+            }
+
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-img-wrapper" onclick="openLightbox('${photo.image_url}')">
+                        <img src="${photo.image_url}" alt="Zdjęcie Figi" loading="lazy">
+                    </div>
+                    <div class="card-actions">
+                        <button class="icon-btn delete" onclick="deletePhoto(event, ${photo.id})" title="Usuń zdjęcie">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        async function deletePhoto(event, id) {
+            event.stopPropagation();
+            if (confirm('Usunąć to zdjęcie dla wszystkich?')) {
+                const { error } = await supabaseClient
+                    .from('figa_galeria')
+                    .delete()
+                    .eq('id', id);
+
+                if (!error) {
+                    fetchPhotos();
+                } else {
+                    alert('Błąd podczas usuwania: ' + error.message);
+                }
+            }
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const urlInput = document.getElementById('url-input');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (!supabaseClient) {
+                alert('Najpierw skonfiguruj klucze Supabase w kodzie pliku!');
+                return;
+            }
+
+            if (urlInput.value.trim() !== '') {
+                submitBtn.innerText = "Wysyłanie do chmury...";
+                submitBtn.disabled = true;
+
+                const { error } = await supabaseClient
+                    .from('figa_galeria')
+                    .insert([{ image_url: urlInput.value.trim() }]);
+
+                submitBtn.innerText = "Dodaj do albumu dla wszystkich";
+                submitBtn.disabled = false;
+
+                if (!error) {
+                    urlInput.value = '';
+                    closeAddModal(e);
+                    fetchPhotos();
+                } else {
+                    alert('Błąd zapisu: ' + error.message);
+                }
+            }
+        }
+
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox-modal').classList.add('active');
+        }
+
+        function closeLightbox(event) {
+            if (event.target.id === 'lightbox-modal' || event.target.className === 'close-modal') {
+                document.getElementById('lightbox-modal').classList.remove('active');
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('add-modal').classList.add('active');
+        }
+
+        function closeAddModal(event) {
+            if (event.target.id === 'add-modal' || event.type === 'submit') {
+                document.getElementById('add-modal').classList.remove('active');
+            }
+        }
+
+        // Pobierz zdjęcia przy starcie
+        fetchPhotos();
+    </script>
+</body>
+</html>
