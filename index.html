@@ -6,7 +6,7 @@
     <title>Katalog Figi 🐾</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Supabase SDK do obsługi chmury dla wszystkich -->
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -257,7 +257,6 @@
 
     <header>
         <h1>FIGA 🐾</h1>
-        <p>Katalog zdjęć przygotowany z miłością</p>
     </header>
 
     <div class="actions-bar">
@@ -289,22 +288,13 @@
     </div>
 
     <script>
-        // --- KONFIGURACJA SUPABASE (Zmień na swoje darmowe klucze z supabase.com) ---
-        const SUPABASE_URL = 'https://twoj-projekt.supabase.co';
-        const SUPABASE_ANON_KEY = 'twoj-anon-key';
-        // --------------------------------------------------------------------------
+        // Twoje skonfigurowane dane Supabase
+        const SUPABASE_URL = 'https://bgegxkdxvrvezbxfuofw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_l01aBHT-x5GkZM9nsOlHgQ_lvJTzeAO';
 
-        let supabaseClient = null;
-        if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'https://twoj-projekt.supabase.co') {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         async function fetchPhotos() {
-            if (!supabaseClient) {
-                document.getElementById('gallery').innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--accent-light); padding: 40px 0;"><b>Konfiguracja wymagana:</b> Wklej swoje darmowe klucze Supabase w kodzie JavaScript pliku index.html, aby baza danych działała publicznie!</p>';
-                return;
-            }
-
             const { data, error } = await supabaseClient
                 .from('figa_galeria')
                 .select('*')
@@ -312,6 +302,7 @@
 
             if (error) {
                 console.error('Błąd pobierania:', error);
+                document.getElementById('gallery').innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--danger-color); padding: 40px 0;">Błąd tabeli w bazie: ${error.message}<br><small>Upewnij się, że masz utworzoną tabelę o nazwie 'figa_galeria' z kolumną 'image_url'!</small></p>`;
                 return;
             }
 
@@ -364,11 +355,6 @@
             e.preventDefault();
             const urlInput = document.getElementById('url-input');
             const submitBtn = document.getElementById('submit-btn');
-
-            if (!supabaseClient) {
-                alert('Najpierw skonfiguruj klucze Supabase w kodzie pliku!');
-                return;
-            }
 
             if (urlInput.value.trim() !== '') {
                 submitBtn.innerText = "Wysyłanie do chmury...";
