@@ -204,7 +204,7 @@
             color: var(--accent-light);
         }
 
-        /* Modal dodawania zdjęcia */
+        /* Modal dodawania */
         .add-modal-content {
             background: var(--card-bg);
             border: 1px solid var(--accent-purple);
@@ -260,7 +260,7 @@
     </header>
 
     <div class="actions-bar">
-        <button class="btn" onclick="openAddModal()">➕ Dodaj link do zdjęcia</button>
+        <button class="btn" onclick="openAddModal()">➕ Dodaj nowe zdjęcie</button>
     </div>
 
     <main class="gallery-grid" id="gallery">
@@ -279,8 +279,12 @@
             <h2>Dodaj zdjęcie Figi</h2>
             <form id="add-photo-form" onsubmit="handleFormSubmit(event)">
                 <div class="form-group">
-                    <label>Wklej bezpośredni URL do zdjęcia:</label>
-                    <input type="url" id="url-input" placeholder="https://..." required>
+                    <label>Wybierz plik z urządzenia:</label>
+                    <input type="file" id="file-input" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Lub wklej bezpośredni URL do zdjęcia:</label>
+                    <input type="url" id="url-input" placeholder="https://...">
                 </div>
                 <button type="submit" class="btn submit-btn" id="submit-btn">Dodaj do albumu dla wszystkich</button>
             </form>
@@ -288,9 +292,10 @@
     </div>
 
     <script>
-        // Twoje skonfigurowane dane Supabase
+        // Twoje dane Supabase
         const SUPABASE_URL = 'https://bgegxkdxvrvezbxfuofw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_l01aBHT-x5GkZM9nsOlHgQ_lvJTzeAO';
+        const STORAGE_BUCKET = 'figa-bucket'; // Nazwa wiadra (bucket) w Supabase Storage
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -302,7 +307,7 @@
 
             if (error) {
                 console.error('Błąd pobierania:', error);
-                document.getElementById('gallery').innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--danger-color); padding: 40px 0;">Błąd tabeli w bazie: ${error.message}<br><small>Upewnij się, że masz utworzoną tabelę o nazwie 'figa_galeria' z kolumną 'image_url'!</small></p>`;
+                document.getElementById('gallery').innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--danger-color); padding: 40px 0;">Błąd tabeli w bazie: ${error.message}</p>`;
                 return;
             }
 
@@ -353,27 +358,61 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
+            const fileInput = document.getElementById('file-input');
             const urlInput = document.getElementById('url-input');
             const submitBtn = document.getElementById('submit-btn');
 
-            if (urlInput.value.trim() !== '') {
-                submitBtn.innerText = "Wysyłanie do chmury...";
-                submitBtn.disabled = true;
+            let imageUrl = '';
 
-                const { error } = await supabaseClient
+            submitBtn.innerText = "Wysyłanie...";
+            submitBtn.disabled = true;
+
+            try {
+                // Jeśli wybrano plik z urządzenia
+                if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
+                    const fileName = `${Date.now()}_${file.name}`;
+
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                        .from(STORAGE_BUCKET)
+                        .upload(fileName, file);
+
+                    if (uploadError) throw uploadError;
+
+                    // Pobranie publicznego URL pliku z Supabase Storage
+                    const { data: publicURLData } = supabaseClient.storage
+                        .from(STORAGE_BUCKET)
+                        .getPublicUrl(fileName);
+
+                    imageUrl = publicURLData.publicUrl;
+                } 
+                // Jeśli wklejono link URL
+                else if (urlInput.value.trim() !== '') {
+                    imageUrl = urlInput.value.trim();
+                } else {
+                    alert('Wybierz plik lub wklej link URL!');
+                    submitBtn.innerText = "Dodaj do albumu dla wszystkich";
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                // Zapisanie adresu zdjęcia w tabeli bazy danych
+                const { error: insertError } = await supabaseClient
                     .from('figa_galeria')
-                    .insert([{ image_url: urlInput.value.trim() }]);
+                    .insert([{ image_url: imageUrl }]);
 
+                if (insertError) throw insertError;
+
+                fileInput.value = '';
+                urlInput.value = '';
+                closeAddModal(e);
+                fetchPhotos();
+
+            } catch (err) {
+                alert('Błąd: ' + err.message);
+            } finally {
                 submitBtn.innerText = "Dodaj do albumu dla wszystkich";
                 submitBtn.disabled = false;
-
-                if (!error) {
-                    urlInput.value = '';
-                    closeAddModal(e);
-                    fetchPhotos();
-                } else {
-                    alert('Błąd zapisu: ' + error.message);
-                }
             }
         }
 
@@ -398,7 +437,6 @@
             }
         }
 
-        // Pobierz zdjęcia przy starcie
         fetchPhotos();
     </script>
 </body>
