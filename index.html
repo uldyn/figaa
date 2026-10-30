@@ -257,39 +257,44 @@
     </header>
 
     <div class="actions-bar">
-        <button class="btn" onclick="openAddModal()">➕ Dodaj link do zdjęcia</button>
+        <button class="btn" onclick="openAddModal()">➕ Dodaj zdjęcie</button>
     </div>
 
     <main class="gallery-grid" id="gallery"></main>
 
-    <!-- Modal podglądu -->
+    <!-- Modal podglądu zdjęcia -->
     <div class="modal" id="lightbox-modal" onclick="closeLightbox(event)">
         <span class="close-modal" onclick="closeLightbox(event)">&times;</span>
         <img class="modal-content" id="lightbox-img" src="" alt="Powiększenie">
     </div>
 
-    <!-- Modal dodawania -->
+    <!-- Modal dodawania zdjęcia -->
     <div class="modal" id="add-modal" onclick="closeAddModal(event)">
         <div class="add-modal-content" onclick="event.stopPropagation()">
             <h2>Dodaj zdjęcie Figi</h2>
             <form id="add-photo-form" onsubmit="handleFormSubmit(event)">
                 <div class="form-group">
-                    <label>Wklej bezpośredni link URL do zdjęcia:</label>
-                    <input type="url" id="url-input" placeholder="https://..." required>
+                    <label>Wybierz plik z komputera / telefonu:</label>
+                    <input type="file" id="file-input" accept="image/*">
                 </div>
-                <button type="submit" class="btn submit-btn">Dodaj do albumu</button>
+                <div class="form-group">
+                    <label>Lub wklej URL zdjęcia:</label>
+                    <input type="url" id="url-input" placeholder="https://...">
+                </div>
+                <button type="submit" class="btn submit-btn" id="submit-btn">Dodaj do albumu</button>
             </form>
         </div>
     </div>
 
     <script>
-        // Początkowa lista (możesz tu wpisywać linki do zdjęć Figi)
-        let photos = JSON.parse(localStorage.getItem('figa_vercel_gallery')) || [
-            { id: 1, src: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600" }
-        ];
+        let photos = JSON.parse(localStorage.getItem('figa_simple_gallery')) || [];
 
         function savePhotos() {
-            localStorage.setItem('figa_vercel_gallery', JSON.stringify(photos));
+            try {
+                localStorage.setItem('figa_simple_gallery', JSON.stringify(photos));
+            } catch (e) {
+                alert('Pamięć przeglądarki jest pełna.');
+            }
         }
 
         function renderGallery() {
@@ -297,7 +302,7 @@
             gallery.innerHTML = '';
 
             if (photos.length === 0) {
-                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Brak zdjęć w galerii. 🐾</p>';
+                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Album jest jeszcze pusty.<br>Kliknij przycisk "➕ Dodaj zdjęcie" powyżej! 🐾</p>';
                 return;
             }
 
@@ -320,7 +325,7 @@
 
         function deletePhoto(event, id) {
             event.stopPropagation();
-            if (confirm('Usunąć to zdjęcie?')) {
+            if (confirm('Czy na pewno chcesz usunąć to zdjęcie?')) {
                 photos = photos.filter(p => p.id !== id);
                 savePhotos();
                 renderGallery();
@@ -350,3 +355,54 @@
 
         function handleFormSubmit(e) {
             e.preventDefault();
+            const fileInput = document.getElementById('file-input');
+            const urlInput = document.getElementById('url-input');
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    compressImage(e.target.result, 800, 0.7, function(compressedSrc) {
+                        addNewPhoto(compressedSrc);
+                    });
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else if (urlInput.value.trim() !== '') {
+                addNewPhoto(urlInput.value.trim());
+            }
+
+            fileInput.value = '';
+            urlInput.value = '';
+            closeAddModal(e);
+        }
+
+        function addNewPhoto(src) {
+            photos.unshift({ id: Date.now(), src: src });
+            savePhotos();
+            renderGallery();
+        }
+
+        function compressImage(base64Str, maxWidth, quality, callback) {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/jpeg', quality));
+            };
+        }
+
+        renderGallery();
+    </script>
+</body>
+</html>
